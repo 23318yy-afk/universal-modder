@@ -2,6 +2,7 @@
 
     uv run --with pytest pytest -q
 """
+import io
 import json
 import os
 import shutil
@@ -156,6 +157,21 @@ def test_unicode_output_on_cp1252_console(tmp_path):
     r = subprocess.run([sys.executable, "-m", "um", "kb", "show", "n.md"],
                        capture_output=True, encoding="utf-8", env=env)
     assert r.returncode == 0 and "LÖVE →" in r.stdout
+
+
+def test_cli_prints_text_a_legacy_console_cannot_encode(tmp_path, monkeypatch):
+    # a Windows console defaults to cp1252, which has no "≥" or "→"; a note can hold anything
+    root = tmp_path / "knowledge" / "games" / "x"
+    root.mkdir(parents=True)
+    (root / "a.md").write_text("---\nkind: game\ntitle: Boon\ngame: X\n---\n# Boon\n\nThe boon pool ≥ 3 → cached\n",
+                               encoding="utf-8")
+    raw = io.BytesIO()
+    console = io.TextIOWrapper(raw, encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", console)
+    from um import cli
+    cli.main(["kb", "search", "boon", "--root", str(tmp_path / "knowledge")])
+    console.flush()
+    assert "The boon pool ≥ 3 → cached" in raw.getvalue().decode("utf-8")
 
 
 def test_tool_exe_does_not_set_dotnet_engine(tmp_path):
