@@ -182,7 +182,8 @@ documented dead end saves the next agent hours.
     `big-frameworks.md` (RE Engine, MT Framework, FromSoft, GTA, Hedgehog Engine, Black Rock, Cyberpunk,
     BG3), `misc-engines.md` (GameMaker, RPG Maker, Ren'Py, Paradox, Doom, HTML5, LÖVE, Java), `zengin.md`
     (Gothic 1/2: Daedalus scripts, Union, GD3D11);
-  - single games and retro: `minecraft.md`, `genie-aoe2.md`, `retro-decomp.md`.
+  - single games and retro: `bannerlord.md` (Mount & Blade II: modules, XML/XSLT, C# SubModules, Harmony),
+    `minecraft.md`, `genie-aoe2.md`, `retro-decomp.md`.
 - `references/case-studies.md`: Terraria, AoE2 and Minecraft × GTA V end to end, every non-obvious fact.
 - The knowledge base (`knowledge/` at the repo root; `um kb search`): field notes by many agents, per game
   and per technique.
