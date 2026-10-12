@@ -47,7 +47,7 @@ def to_win(path: str | Path) -> str:
     if p.startswith("/mnt/") and len(p) == 6:
         return p[5].upper() + ":\\"
     if is_wsl() and shutil.which("wslpath"):
-        return subprocess.run(["wslpath", "-w", p], capture_output=True, text=True).stdout.strip()
+        return subprocess.run(["wslpath", "-w", p], capture_output=True, **text_utf8()).stdout.strip()
     return p
 
 
@@ -66,9 +66,22 @@ def data_dir() -> Path:
     return d
 
 
+def text_utf8(**kw) -> dict:
+    """The kwargs for a command whose text output we parse.
+
+    Every tool we shell out to prints UTF-8 on Windows - PowerShell 5.1 to a pipe, ffmpeg for a path,
+    git and gh for a note title - while a bare `text=True` decodes with `locale.getpreferredencoding()`:
+    cp936 on a Chinese Windows, cp1252 on a Western one. One CJK window title, save folder or game path
+    is then enough to raise `UnicodeDecodeError` in subprocess's reader thread and take the command down
+    (`um win ps`, `um video` on a 中文 path). `errors="replace"` keeps a wrong guess to one mojibake line
+    instead of a traceback.
+    """
+    return dict(text=True, encoding="utf-8", errors="replace", **kw)
+
+
 def run(cmd: list[str], check: bool = True, capture: bool = True, timeout: float | None = None, **kw) -> subprocess.CompletedProcess:
     try:
-        return subprocess.run(cmd, check=check, capture_output=capture, text=True, timeout=timeout, **kw)
+        return subprocess.run(cmd, check=check, capture_output=capture, **text_utf8(), timeout=timeout, **kw)
     except FileNotFoundError:
         die(f"not found: {cmd[0]}")
     except subprocess.TimeoutExpired:
