@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import locale
 import os
 import platform
 import shutil
@@ -69,14 +70,30 @@ def data_dir() -> Path:
 def text_utf8(**kw) -> dict:
     """The kwargs for a command whose text output we parse.
 
-    Every tool we shell out to prints UTF-8 on Windows - PowerShell 5.1 to a pipe, ffmpeg for a path,
-    git and gh for a note title - while a bare `text=True` decodes with `locale.getpreferredencoding()`:
-    cp936 on a Chinese Windows, cp1252 on a Western one. One CJK window title, save folder or game path
-    is then enough to raise `UnicodeDecodeError` in subprocess's reader thread and take the command down
-    (`um win ps`, `um video` on a 中文 path). `errors="replace"` keeps a wrong guess to one mojibake line
-    instead of a traceback.
+    ffmpeg (for a path), git and gh (for a note title) print UTF-8 on Windows, and so does PowerShell
+    once a script starts with PS_UTF8, while a bare `text=True` decodes with
+    `locale.getpreferredencoding()`: cp936 on a Chinese Windows, cp1252 on a Western one. One CJK window
+    title, save folder or game path is then enough to raise `UnicodeDecodeError` in subprocess's reader
+    thread and take the command down (`um win ps`, `um video` on a 中文 path). `errors="replace"` keeps a
+    wrong guess to one mojibake line instead of a traceback.
     """
     return dict(text=True, encoding="utf-8", errors="replace", **kw)
+
+
+def text_console(**kw) -> dict:
+    """The kwargs for Windows' own console tools (taskkill, reg), which print in the console's code page.
+
+    That's the OEM code page unless `chcp` changed it. On CJK Windows it equals the locale codec (936, 932,
+    949, 950), so these keep decoding with the locale, as before; `errors="replace"` turns a mismatch (a
+    Western OEM code page, or WSL's UTF-8 locale) into replacement characters instead of a traceback.
+    """
+    return dict(text=True, encoding=locale.getpreferredencoding(False), errors="replace", **kw)
+
+
+# Windows PowerShell 5.1 encodes what it prints to a pipe with [Console]::OutputEncoding, the console's code
+# page (OEM, so 936 on a Chinese Windows). Start every -Command script with this so its output is UTF-8 and
+# matches text_utf8(). Best-effort: with no console attached the setter throws, and the script still runs.
+PS_UTF8 = "try{[Console]::OutputEncoding=[Text.Encoding]::UTF8}catch{};"
 
 
 def run(cmd: list[str], check: bool = True, capture: bool = True, timeout: float | None = None, **kw) -> subprocess.CompletedProcess:

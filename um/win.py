@@ -32,7 +32,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from um.common import die, is_windows, is_wsl, ps_exe, text_utf8, to_posix, to_win
+from um.common import PS_UTF8, die, is_windows, is_wsl, ps_exe, text_console, text_utf8, to_posix, to_win
 
 HERE = Path(__file__).resolve().parent
 TOOLS = HERE / "ps1"          # shipped inside the package so `uv tool install` gets them too
@@ -48,10 +48,9 @@ def _check_platform():
 
 def powershell(script: str, timeout: float = 60) -> str:
     _check_platform()
-    # Window titles and install paths are not ASCII: ask PowerShell for UTF-8 too, so the bytes match
-    # text_utf8() instead of the console codepage. The prefix is best-effort - with no console attached
-    # it can throw, and the script still has to run.
-    script = "try{[Console]::OutputEncoding=[Text.Encoding]::UTF8}catch{};" + script
+    # Window titles and install paths are not ASCII: ask PowerShell for UTF-8 (PS_UTF8), so the bytes match
+    # text_utf8() instead of the console code page.
+    script = PS_UTF8 + script
     r = subprocess.run([ps_exe(), "-NoProfile", "-NonInteractive", "-Command", script], capture_output=True,
                        timeout=timeout, cwd="/mnt/c" if is_wsl() else None, **text_utf8())
     if r.returncode:
@@ -193,7 +192,7 @@ def pid_of(name: str) -> int | None:
 
 def kill(pid: int):
     """By exact PID. (Pattern kills - pkill -f, taskkill /IM with wildcards - can hit the agent's own shell or other apps.)"""
-    r = subprocess.run(["taskkill.exe" if is_wsl() else "taskkill", "/PID", str(int(pid)), "/F"], capture_output=True, **text_utf8())
+    r = subprocess.run(["taskkill.exe" if is_wsl() else "taskkill", "/PID", str(int(pid)), "/F"], capture_output=True, **text_console())
     print((r.stdout or r.stderr).strip())
 
 
@@ -456,7 +455,7 @@ def reg(action: str, key: str, value: str | None = None, data: str | None = None
         subprocess.run([exe, "export", key, to_win(bfile) if is_wsl() else str(bfile), "/y"], capture_output=True)
         print("backup:", bfile)
         cmd = [exe, "add", key, "/v", value, "/t", typ, "/d", data, "/f"]
-    r = subprocess.run(cmd, capture_output=True, **text_utf8())
+    r = subprocess.run(cmd, capture_output=True, **text_console())
     print((r.stdout or r.stderr).replace("\r", "").strip())
 
 

@@ -1,14 +1,17 @@
 """Tools print UTF-8; the locale codec must never decide whether um works.
 
-On a Chinese Windows `locale.getpreferredencoding()` is cp936, on a Western one cp1252, while PowerShell
-5.1 to a pipe and ffmpeg for a path both print UTF-8. A bare `text=True` therefore dies with
-`UnicodeDecodeError` in subprocess's reader thread on the first CJK window title, save folder or game path -
-`um win ps` did, on a machine with 中文 window titles. `um.common.text_utf8()` is the one way to read a
-tool's output; `test_no_bare_locale_decode` keeps it that way.
+On a Chinese Windows `locale.getpreferredencoding()` is cp936, on a Western one cp1252, while ffmpeg prints
+a path in UTF-8, and so does PowerShell 5.1 when its console is at code page 65001 or the script starts with
+`um.common.PS_UTF8`. A bare `text=True` therefore dies with `UnicodeDecodeError` in subprocess's reader
+thread on the first CJK window title, save folder or game path - `um win ps` did, on a machine with 中文
+window titles. `um.common.text_utf8()` is the way to read a tool's output (`text_console()` for taskkill and
+reg, which print in the console code page); `test_no_subprocess_call_decodes_with_the_locale_codec` keeps
+it that way.
 """
 from __future__ import annotations
 
 import ast
+import locale
 import os
 import shutil
 import subprocess
@@ -18,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from um import video
-from um.common import run, text_utf8
+from um.common import run, text_console, text_utf8
 
 UM = Path(__file__).resolve().parent.parent / "um"
 SUBPROCESS_CALLS = {"run", "Popen", "check_output", "call", "check_call"}
@@ -36,6 +39,8 @@ def test_text_utf8_pins_the_codec():
     kw = text_utf8()
     assert kw == dict(text=True, encoding="utf-8", errors="replace")
     assert text_utf8(timeout=5)["timeout"] == 5
+    # taskkill and reg print in the console code page: keep the locale codec there, but never raise
+    assert text_console() == dict(text=True, encoding=locale.getpreferredencoding(False), errors="replace")
 
 
 def test_tool_output_is_read_as_utf8():

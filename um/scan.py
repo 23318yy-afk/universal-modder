@@ -19,7 +19,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from um.common import die, is_mac, is_windows, is_wsl, ps_exe, text_utf8, to_posix
+from um.common import PS_UTF8, die, is_mac, is_windows, is_wsl, ps_exe, text_utf8, to_posix
 
 MAX_ENTRIES = 80_000
 MAX_DEPTH = 6
@@ -53,7 +53,7 @@ def win_folders() -> dict:
         return {}
     cache = win_folders.__dict__
     if "v" not in cache:
-        ps = ("$f=[Environment]; "
+        ps = (PS_UTF8 + "$f=[Environment]; "
               "@($f::GetFolderPath('UserProfile'),$f::GetFolderPath('MyDocuments'),$f::GetFolderPath('ApplicationData'),"
               "$f::GetFolderPath('LocalApplicationData')) -join '|'")
         exe = ps_exe()
